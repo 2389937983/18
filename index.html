@@ -446,8 +446,20 @@ img{display:block;}
   background:var(--card);border:1px solid var(--acc-s);color:var(--ink);
   font-family:var(--bub-font,var(--serif));letter-spacing:1px;padding:calc(13px*var(--bub-k)) calc(15px*var(--bub-k));
 }
-.mstat{font-size:calc(calc(10px*var(--bub-k)) * var(--fk,1));color:var(--ink3);padding:0 4px;letter-spacing:1px;}
-.mstat--rd{color:var(--acc-d);}
+.mstat{display:flex;align-items:center;font-size:calc(calc(10px*var(--bub-k)) * var(--fk,1));color:var(--ink3);padding:0 4px;line-height:1;}
+.mstat svg{width:calc(12px*var(--bub-k));height:calc(12px*var(--bub-k));display:block;}
+.mstat--rd{color:var(--acc);}   /* 第127单 · 已读跟随**主题色**（原 --acc-d 是被对比度钳制压深的那个，调淡主题它也不跟着淡） */
+/* 第128单 · 气泡下面那一行 = 时间戳 +（我发的才有）对钩。
+   用户：「只有一个对钩感觉有点孤独，对钩左边增加消息时间戳吧。梦角消息那边也加时间」。
+   所以两边都有时间；对钩仍只在我这边（梦角的消息没有送达/已读这回事）。
+   ⚠️ `.mstat` 自身样式（字号 10px / 内边距 4px / 灰或主题色）**一律不动** —— 它是对钩的锚点，
+       theme T12 与 bubcss C12 两条判据直接量它的字号与颜色；这里只加一层容器把时间摆在它左边。
+   对齐：我这行靠右、梦角那行靠左，跟各自气泡同侧（气泡已经由 .mcol 的 align-items 决定）。 */
+.mfoot{display:flex;align-items:center;justify-content:flex-start;gap:5px;line-height:1;
+  font-size:calc(calc(10px*var(--bub-k)) * var(--fk,1));color:var(--ink3);padding:0 4px;}
+.mfoot--self{justify-content:flex-end;}
+.mfoot .mstat{padding:0;}          /* 间距交给 .mfoot 的 gap，别再叠一层，免得时间离对钩忽远忽近 */
+.mfoot__t{letter-spacing:.3px;font-variant-numeric:tabular-nums;}
 .msys{align-self:center;max-width:86%;background:rgba(255,255,255,.75);border:1px dashed var(--acc-s);
   color:var(--ink2);font-size:calc(11px * var(--fk,1));border-radius:999px;padding:5px 14px;text-align:center;letter-spacing:.5px;}
 /* 第46单：同一枚 .msys 的两种变体 ——
@@ -1837,6 +1849,21 @@ button.lkh{text-align:left;width:100%;background:var(--card);border:1px solid va
    颜色对齐「更多」页的 .tile__ic：同样走主题色本身 --acc + opacity .92，不再用被强制压深的 --acc-d。
    同样必须写在**文件末尾**才压得住前面 .chatduo__acts 的声明（同第73单那条的理由）。 */
 .chatduo__acts .csearch,.chatduo__acts .cicon{color:var(--acc);opacity:.92;}
+/* 第122单 · 图片消息气泡：等比铺开（宽高由画面本身 + aspect-ratio 决定），上限 200×240，绝不裁切。
+   单张图比贴图大得多，但也不占满整屏（列表里还要看得到上下文）。 */
+.bub--img{padding:6px;overflow:hidden;}
+.msimg{display:block;width:auto;height:auto;max-width:200px;max-height:240px;border-radius:12px;}
+/* 第123单 · 朋友圈动态里的图片 / 视频：图片等比铺开（上限比聊天里大），视频卡复刻聊天那张的观感 */
+.momimg{margin-top:8px;max-width:100%;border-radius:14px;overflow:hidden;}
+.momimg img{display:block;width:100%;height:auto;max-height:320px;object-fit:cover;border-radius:14px;}
+.momvid{margin-top:8px;display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;
+  background:var(--card);border:1px solid var(--line);color:var(--ink);}
+.momvid__pl{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;
+  background:var(--acc);color:var(--on-acc);}
+.momvid__pl svg{width:14px;height:14px;}
+.momvid__du{font-size:calc(12px * var(--fk,1));color:var(--ink2);letter-spacing:.5px;}
+.mompick__im{display:block;max-width:120px;max-height:120px;border-radius:10px;margin-top:4px;}
+.mompick__vd{font-size:calc(12.5px * var(--fk,1));color:var(--ink2);}
 /* ===== 第76单 · 朋友圈改版 =====
    封面块（微信式）：顶部一张大图，头像+名字压在下沿右侧；点封面换图。
    整页背景仍是 .screen--mom 的 --mom-bg-layer（第49单），两者互不干扰。 */
@@ -1976,14 +2003,23 @@ var ICONS={
   send:W('<path d="M4 12 20 4l-4.5 16-4-6.5z"/><path d="M11.5 13.5 20 4"/>'),
   edit:W('<path d="m14.5 5.5 4 4L8 20H4v-4z"/><path d="m12.5 7.5 4 4"/>'),
   x:W('<path d="M6 6l12 12M18 6 6 18"/>'),
-  /* 第44单 · 挂断听筒：话筒朝下 + 底下那道横线。
-     ⚠️ 只需**平移**，不要重画 —— 我第一版把整条闭合轮廓画成了不对称的一坨，
-     重画三版反而更不像听筒（用户原话）。正确做法是把原图形整体挪到 24×24 画布正中。
-     原图形占 y=9.6~17.4（高 7.8）、x=3.2~20.8，中心 y≈13.5；平移 -1.5 后落 y=8.1~15.9，
-     中心 12.0，与画布中心重合。
-     ⚠️ 只平移话筒本体；横线**单独往下挪**（18.1→19.4），否则它压在话筒底边上、
-     等于看不见（平移话筒 -1.5 之后两者正好贴到一起）。 */
-  hangup:W('<path d="M3.2 13.4c4.6-4 13-4 17.6 0l.9.9a1.4 1.4 0 0 1 .2 2l-.7 1.3a1.6 1.6 0 0 1-1.9.8l-2.6-.9a1.5 1.5 0 0 1-.9-1.7l.2-1.6a11 11 0 0 0-6.8 0l.2 1.6a1.5 1.5 0 0 1-.9 1.7l-2.6.9a1.6 1.6 0 0 1-1.9-.8l-.7-1.3a1.4 1.4 0 0 1 .2-2z"/><path d="M6.6 19.4h10.8"/>'),
+  /* 第130单 · 通话大屏的「收起」键图标：原来是话筒（ico('phone')），跟旁边的「挂断」并排
+     两颗一模一样的听筒，分不出哪个是哪个（用户驳回「怎么全是听筒」）。
+     换成「向下收进底下那条横杠」＝ 收成底部迷你条，语义直白且不可与听筒混淆。仍走全站线描风格。 */
+  mini:W('<path d="M12 4.6v9.6"/><path d="m7.7 10.4 4.3 4.3 4.3-4.3"/><path d="M5.6 19.4h12.8"/>'),
+  /* 第129单 · 挂断标志换成参考图那种**实心**白听筒（宽而扁、底下中间开口、没有单独横线）。
+     第44单的形态是「线描听筒 + 底下单独一道横线」，用户这次给了参考图，形状整体换掉。
+     这条 path 不是手调的，是**从参考图描出来的**：
+       ① 逐行扫参考图的白色像素，取外轮廓左/右链与中间开口的左/右链；
+       ② 按 外左链(↓) → 开口左链(↑) → 开口右链(↓) → 外右链(↑) 拼成一条闭合折线；
+       ③ Douglas-Peucker 抽稀到容差 0.12 画布单位 + 顶点吸附到 0.05 网格 + 丢弃 <0.08 的微段
+          → 33 个顶点、335 字符；
+       ④ 在 320×320 归一化网格上把折线栅格化，与参考图掩膜算交并比 = **97.66%**。
+     尺寸：参考图红圆直径记作 1 时，整字宽 48%、高 18.6%；换到 24×24 画布＝
+       字框 x 2.25~21.75、y 8.2~15.8（与旧线描版同高同位，不挪位置，故按钮尺寸不受影响）。
+     ⚠️ 必须显式写 fill="currentColor" stroke="none" —— W() 外壳默认 fill="none" +
+       stroke-width="1.8"，不覆盖就画成空心线框，跟参考图不是一回事。 */
+  hangup:W('<path fill="currentColor" stroke="none" d="M10.2 8.2L8.3 8.5L6.35 9.15L5.8 9.55L4.4 10.15L2.8 11.5L2.35 12.6L2.25 14.05L2.7 15.25L3 15.55L3.65 15.75L4.95 15.45L5.9 14.85L7.1 14.5L7.65 13.65L8.4 11.1L9.35 10.65L10.1 10.55L13.9 10.55L15.2 10.9L15.8 11.5L16.15 13.1L16.8 14.4L20.05 15.75L21 15.55L21.55 14.9L21.75 13.45L21.55 12.05L20.8 11L19.7 10.15L18.75 9.8L17.75 9.15L14.1 8.2Z"/>'),
   img:W('<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5-5 3 3 3.5-3.5L20 16"/>'),
   trash:W('<path d="M4.5 6.5h15M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5M6.5 6.5 7.5 20h9l1-13.5M10 10.5v6M14 10.5v6"/>'),
   /* 第42单 · 线描五角星（设默认拍一拍用）。两个状态都由图标本身区分：
@@ -2630,11 +2666,11 @@ var THEMES=[
    ⚠️ 信箱与塔罗已从 + 面板移除（用户要求），但它们的页面/入口都还在
    （更多页 OPENED 映射、设置页塔罗区），所以功能没有失联，只是聊天里不再直达。
    每一项的按钮在 openPanel() 里按 id 分派；加新项只要往这里加一条 + 一个 case。 */
-var PANEL_DEF=['redpk','gift','call','sticker','company','video','cards','pokeMe'];
+var PANEL_DEF=['redpk','gift','call','sticker','img','video','cards','pokeMe'];
 var PANEL_META={
   redpk:{nm:'红包',ic:'redpk'},gift:{nm:'送礼物',ic:'gift'},call:{nm:'通话',ic:'phone'},
   sticker:{nm:'表情',ic:'smile'},company:{nm:'陪伴',ic:'heart'},video:{nm:'视频',ic:'video'},
-  cards:{nm:'字卡库',ic:'cards'},pokeMe:{nm:'我拍他',ic:'poke'}
+  cards:{nm:'字卡库',ic:'cards'},img:{nm:'图片',ic:'img'},pokeMe:{nm:'我拍他',ic:'poke'}
 };
 var PANEL_OPT=['redpk','gift','call','sticker','company','video','cards','pokeMe','mail','tarot'];   /* 排序页可选全集（信箱/塔罗可再加回来） */
 var SOON=[
@@ -2771,8 +2807,12 @@ var EMOJIS=['🥰','😳','🥺','😭','😴','🤭','🙈','💤','🌸','🌙
    emoji 与上传图放同一个池子、同权重；上传图**按原比例**缩到最长边 ≤240，绝不裁切，
    并把原始宽高记进条目，展示层才能还原比例。 */
 var STK_MAX_SIDE=240;            /* 上传图最长边上限（等比缩放，不裁切） */
-var STK_MAX_ONE=420*1024;        /* 单张 dataURL 上限（约 420KB） */
-var STK_MAX_ALL=2600*1024;       /* 所有上传图总量上限（localStorage 一般 5MB，留一半余量） */
+var STK_MAX_ONE=420*1024;        /* 单张 dataURL 上限（约 420KB）：上传图已缩到最长边 ≤240，这个额度够宽 */
+/* 第119单 · 所有上传图总量上限：2600KB → **256MB**（按字节，不按张数）。
+   原来的 2600KB 是照"localStorage 一般 5MB"定的 —— 图片在第109单已经搬进 IndexedDB，
+   那个理由过期了；2600KB 换算下来只有 170 多张，单主一眼就看出卡太死。
+   额度参照同类 IDB 资产：陪伴语音 150MB、聊天视频 300MB。 */
+var STK_MAX_ALL=256*1024*1024;
 var STK_UN='sg_un';              /* 「未分类」兜底 tab：删分类时条目等量挪进来（按需创建） */
 function defStkLib(){
   return {groups:[
@@ -3245,7 +3285,7 @@ window.quoteOf=function(m){
 };
 function normMsgs(m){
   if(!Array.isArray(m))return [];
-  var T={text:1,card:1,sys:1,call:1,gift:1,rp:1,stk:1,tarot:1,co:1,video:1},out=[];
+  var T={text:1,card:1,sys:1,call:1,gift:1,rp:1,stk:1,tarot:1,co:1,video:1,img:1},out=[];
   for(var i=0;i<m.length;i++){
     var x=m[i];if(!x||typeof x!=='object'||!T[x.type])continue;
     var o={id:(typeof x.id==='string'&&x.id)?x.id:uid('m'),
@@ -3264,7 +3304,20 @@ function normMsgs(m){
       }
     }
     if(x.stk){var sk=normStk(x.stk);if(sk)o.stk=sk;}                 /* 表情：单独一条，或混在文字/字卡里 */
-    if(x.type==='stk'&&!o.stk)continue;                              /* 表情条没载荷 = 空气泡，直接丢 */
+    if(x.type==='stk'&&!o.stk)continue;
+  if(x.type==='img'){
+    /* ⚠️ 这里**不能**调 safeImgDataUrl —— 它是 normS 内部的嵌套函数，normMsgs 够不着。
+       第122单第一版就是这么挂的：读档直接 ReferenceError → 整份档退回空白 → "刷新后连所有消息都没了"。
+       所以内联同一套规则：idb: 引用放行（第120单）、http(s) 放行（OSS）、data:image/base64 限长。 */
+    var isrc=(typeof x.src==='string')?x.src:'';
+    var iok=!!isrc&&(isrc.indexOf('idb:')===0
+      || /^https?:\/\/[A-Za-z0-9._~:\/?#\[\]@!$&'()*+,;=%-]{6,600}$/i.test(isrc)
+      || (isrc.length<=2097152 && /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/.test(isrc)));
+    if(!iok)continue;
+    o.src=isrc;
+    o.w=Math.max(0,Math.min(4000,Math.round(+x.w||0)));
+    o.h=Math.max(0,Math.min(4000,Math.round(+x.h||0)));
+  }                              /* 表情条没载荷 = 空气泡，直接丢 */
     /* 第60单 · 引用三件套。⚠️ 三者**必须成套**：没有 quote 快照的 qid 是悬空的
        （引用块渲染不出内容），宁可整组丢掉，也不留一个只有 id 的半截引用。 */
     var nq=window.normQuote(x.quote);
@@ -4342,14 +4395,35 @@ function normMoments(arr){
     var x=arr[i];if(!x||typeof x!=='object')continue;
     var text=(typeof x.text==='string')?x.text.trim():'';
     var stk=normStk(x.stk);                       /* 贴纸可空 */
-    var cmts=normMomCmt(x.comments);
-    if(!text&&!stk)continue;                      /* 空壳动态直接丢 */
+    /* 第123单 · 朋友圈可带图片/视频。图片按 data:image 存（第109单会自动搬进 IndexedDB）；
+     视频只存媒体仓的键 + 宽高时长（本体在 mdPut('momv:'+id)）。
+     ⚠️ 校验**内联**：safeImgDataUrl 是 normS 内部的嵌套函数，这里够不着 —— 第122单调了它，
+        读档直接 ReferenceError、整份档退回空白 ✗。 */
+  var mimg='';
+  if(typeof x.img==='string'&&x.img){
+    var s0=x.img;
+    if(s0.indexOf('idb:')===0||/^https?:\/\/[A-Za-z0-9._~:\/?#\[\]@!$&'()*+,;=%-]{6,600}$/i.test(s0)
+      ||(s0.length<=4194304&&/^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/.test(s0)))mimg=s0;
+  }
+  var mvid=null;
+  if(x.vid&&typeof x.vid==='object'&&typeof x.vid.id==='string'&&x.vid.id){
+    var v0=x.vid;
+    mvid={id:v0.id.slice(0,40),
+      w:Math.max(0,Math.min(4000,Math.round(+v0.w||0))),
+      h:Math.max(0,Math.min(4000,Math.round(+v0.h||0))),
+      dur:Math.max(0,Math.min(600,Math.round(+v0.dur||0))),
+      size:Math.max(0,Math.round(+v0.size||0))};
+  }
+  var cmts=normMomCmt(x.comments);
+    if(!text&&!stk&&!mimg&&!mvid)continue;          /* 空壳动态直接丢（图片/视频也算内容） */
     out.push({
       id:(typeof x.id==='string'&&x.id)?x.id:uid('M'),
       dir:x.dir==='me'?'me':'ta',
       text:text.slice(0,MOM_MAX),
       stk:stk,
-      place:(typeof x.place==='string')?x.place.trim().slice(0,20):'',
+        img:mimg,
+  vid:mvid,
+place:(typeof x.place==='string')?x.place.trim().slice(0,20):'',
       likes:{ta:x.likes&&x.likes.ta?1:0,me:x.likes&&x.likes.me?1:0},
       comments:cmts,
       seen:x.seen?1:0,                            /* 我看到过没有（未读角标靠它） */
@@ -4365,9 +4439,10 @@ function normS(raw){
   var d=defS(),s=raw&&typeof raw==='object'?raw:{};
   var o=defS();
   if(s.contact&&typeof s.contact.name==='string'&&s.contact.name.trim())o.contact.name=s.contact.name.trim().slice(0,20);
-  if(s.contact&&typeof s.contact.av==='string'&&s.contact.av.slice(0,5)==='data:')o.contact.av=s.contact.av;
+  /* 第120单 · 头像两处同样要放行 'idb:<key>' 引用（和 safeImgDataUrl 一个道理，别让引用在规范化这步被丢） */
+  if(s.contact&&typeof s.contact.av==='string'&&(s.contact.av.slice(0,5)==='data:'||s.contact.av.indexOf('idb:')===0))o.contact.av=s.contact.av;
   if(typeof s.myName==='string'&&s.myName.trim())o.myName=s.myName.trim().slice(0,20);
-  if(typeof s.myAv==='string'&&s.myAv.slice(0,5)==='data:')o.myAv=s.myAv;
+  if(typeof s.myAv==='string'&&(s.myAv.slice(0,5)==='data:'||s.myAv.indexOf('idb:')===0))o.myAv=s.myAv;
   /* 第33单（安全）：图片 dataURL 的**严格**校验 —— 只认 base64 编码的常见图片类型 + 长度上限。
      为什么必须严：这些值会被**拼进 HTML 属性**（纪念日卡 style="background-image:url(…)"、
      聊天背景 threadBgStyle 同理），只查 'data:image/' 前缀的话，
@@ -4376,6 +4451,11 @@ function normS(raw){
      锁死字符集（base64 字母表里不可能出现引号/尖括号/&）后，两处拼接都变成可证安全。 */
   function safeImgDataUrl(v,maxLen){
     if(typeof v!=='string')return null;
+    /* 第120单 · 档里的图可能已经搬到 IndexedDB（第109单），那时存的是 'idb:<key>' **引用**，
+       不是图片本体 —— 别拿图片规则去校验它。否则引用会在读档规范化这一步被清成 null，
+       表现就是单主报的「退出隔一会儿再进，头像和背景被清空」（真图还在 IDB 里，只是引用被丢了）。
+       真正的回填由 idbHydrate() 负责。 */
+    if(v.indexOf('idb:')===0)return v;
     /* 第70单 · 开了 OSS 之后这里存的是 **https URL**（图在对象存储上），所以放行 http(s)。
        只认这两种协议，其余（javascript:/file:/blob:）一律拒 —— 与原来只认 data:image/ 一样严。 */
     if(/^https?:\/\/[A-Za-z0-9._~:\/?#\[\]@!$&'()*+,;=%-]{6,600}$/i.test(v))return v;
@@ -4416,7 +4496,12 @@ function normS(raw){
     (Array.isArray(s.panel)?s.panel:[]).forEach(function(k){
       if(typeof k==='string'&&opt[k]&&!seen[k]){seen[k]=1;out.push(k);}
     });
-    PANEL_DEF.forEach(function(k){if(!seen[k]){seen[k]=1;out.push(k);}});
+    /* 第122单 · 加号菜单把「陪伴」换成「图片」：老档里存的还是 'company'，
+     这里就地映射成 'img'（并重建 seen，免得下面"补齐新增项"又把 img 追加一次）。
+     陪伴本身没丢 —— 更多页有它自己的入口（data-go="company"）。 */
+  out=out.map(function(k){return k==='company'?'img':k;});
+  seen={};out.forEach(function(k){seen[k]=1;});
+  PANEL_DEF.forEach(function(k){if(!seen[k]){seen[k]=1;out.push(k);}});
     return out;
   })();
   /* 第47单：更多页功能格顺序。与 panel 同一套规则（只认认识的 id / 去重 / 按 MORE_DEF 补齐新增项），
@@ -4682,9 +4767,16 @@ window.IDB_NAME='co18img'; window.IDB_STORE='img'; window.IDB_IMG_MIN=1;
    留一个 8KB 门槛就会有小图继续躺在 localStorage 里，那条验收直接不成立。小图搬进 IDB 一样便宜。 */
 function idbOpen(){return new Promise(function(res,rej){
   if(!window.indexedDB)return rej(new Error('no-idb'));
-  var r=indexedDB.open(window.IDB_NAME,1);
+  /* 第120单 · 原版只挂 onsuccess/onerror：遇到 onblocked（别的连接占着库、版本升级被挡）就**永远不 settle**
+     —— 实测把 idbMigrate / idbPut 挂死（探针两次卡在这里）。补 onblocked + 超时兜底。 */
+  var done=false,fin=function(f){if(done)return;done=true;f();};
+  var r;
+  try{r=indexedDB.open(window.IDB_NAME,1);}catch(e){return rej(e);}
   r.onupgradeneeded=function(){try{r.result.createObjectStore(window.IDB_STORE);}catch(e){}};
-  r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};
+  r.onsuccess=function(){fin(function(){res(r.result);});};
+  r.onerror=function(){fin(function(){rej(r.error||new Error('idb-open-error'));});};
+  r.onblocked=function(){fin(function(){rej(new Error('idb-blocked'));});};
+  setTimeout(function(){fin(function(){rej(new Error('idb-open-timeout'));});},2500);
 });}
 window.idbPut=function(key,val){return idbOpen().then(function(db){return new Promise(function(res,rej){
   var tx=db.transaction(window.IDB_STORE,'readwrite');tx.objectStore(window.IDB_STORE).put(val,key);
@@ -4782,8 +4874,16 @@ window.load=function(){
     var raw=localStorage.getItem(KEY);
     S=normS(raw?JSON.parse(raw):null);
   /* 第109单 · 档里的大图是 'idb:<key>' 引用：异步取回真图填进内存态，填完把当前页重绘一次
-     （缺了这一步，刷新之后所有大图都会是空的 —— 所以它和 save() 那半边必须成对存在）。 */
-  try{window.idbHydrate().then(function(n){if(n){try{if(window.RT&&RT.route)window.go(RT.route);}catch(e){}}});}catch(e){}
+     （缺了这一步，刷新之后所有大图都会是空的 —— 所以它和 save() 那半边必须成对存在）。
+     第120单 · 回填完必须把**贴图类**的 paint 也点一遍：聊天背景/顶栏底色是独立贴到 CSS 变量上的，
+     光重绘路由不会碰它们（单主报的"背景被清空"就出在这条缝里）。 */
+  try{window.idbHydrate().then(function(n){if(n){try{
+    if(window.paintTheme)window.paintTheme();
+    if(window.paintChatBg)window.paintChatBg();
+    if(window.paintBarOp)window.paintBarOp();
+    if(window.RT&&RT.route)window.go(RT.route);
+    if(window.RT&&RT.route==='chat'&&window.renderThread)window.renderThread();
+  }catch(e){}}});}catch(e){}
   /* 第109单 · 开机也跑一次搬运：把档里**还没搬过**的大图搬进 IDB（老档第一次升级就靠这一下） */
   try{setTimeout(function(){try{window.idbMigrate();}catch(e){}},800);}catch(e){}
     if(MIG)save();   /* 迁移结果落档，避免每次启动重复迁移 */
@@ -5485,7 +5585,14 @@ window.momCardHTML=function(m,compact){
           '<span class="momcard__mt">'+momWhen(m.ts)+'</span>'+
           '<button class="momcard__del" data-act="m-del" data-id="'+m.id+'" aria-label="删除这条动态">'+ico('x')+'</button></div>'+
         (m.text?'<div class="momcard__tx">'+esc(m.text)+'</div>':'')+
-        momStkHTML(m.stk)+
+        /* 第123单 · 动态里的图片 / 视频：图片等比铺开（上限由 CSS 卡），视频复刻聊天那张卡的观感
+     （播放键 + 时长），点开走全屏播放器（data-act="momv-play"）。封面缩略图 v1 先不做，
+     因为它要异步从媒体仓取 blob —— 先保证"看得见、点得开、刷新还在"。 */
+  (m.img?'<div class="momimg"><img src="'+esc(m.img)+'" alt="图片" loading="lazy"></div>':'')+
+  (m.vid?'<button class="momvid" data-act="momv-play" data-id="'+esc(m.vid.id)+'" aria-label="播放视频">'+
+    '<span class="momvid__pl">'+ico('play')+'</span>'+
+    '<span class="momvid__du">'+(m.vid.dur?window.fmtClock(m.vid.dur):'')+'</span></button>':'')+
+  momStkHTML(m.stk)+
         (m.place?'<div class="momplace">'+ico('link')+'<span>'+esc(m.place)+'</span></div>':'')+
         momLikeHTML(m)+
         momCmtsHTML(m)+
@@ -5528,7 +5635,11 @@ window.momSheetHTML=function(){
       (RT.momPlace?'<button class="mini" data-act="m-place-clear" style="margin-top:8px">不显示位置</button>':'')+'</div>'+
     '<button class="bigbtn bigbtn--ghost" data-act="m-stk" style="margin-bottom:10px">'+
       (myStkCount?('＋ 插一张贴纸（库里 '+myStkCount+' 张）'):'＋ 插一张贴纸（库是空的）')+'</button>'+
-    '<button class="bigbtn" data-act="m-pub">发出去</button>';
+      (RT.momImg?'<div class="mompick"><span class="mompick__lb">已选图片</span><img class="mompick__im" src="'+esc(RT.momImg.src)+'" alt="已选图片"><button class="mini" data-act="m-img-clear">去掉</button></div>':'')+
+      (RT.momVid?'<div class="mompick"><span class="mompick__lb">已选视频</span><span class="mompick__vd">'+(Math.round(+RT.momVid.dur||0))+' 秒</span><button class="mini" data-act="m-vid-clear">去掉</button></div>':'')+
+      '<button class="bigbtn bigbtn--ghost" data-act="m-img" style="margin-bottom:8px">'+(RT.momImg?'换一张图片':'＋ 选一张图片')+'</button>'+
+      '<button class="bigbtn bigbtn--ghost" data-act="m-vid" style="margin-bottom:10px">'+(RT.momVid?'换一段视频':'＋ 选一段视频')+'</button>'+
+      '<button class="bigbtn" data-act="m-pub">发出去</button>';
 };
 window.openMomSheet=function(){
   RT.momDraft=RT.momDraft||'';RT.momPlace=RT.momPlace||'';RT.momStk=RT.momStk||null;
@@ -7041,16 +7152,21 @@ window.paintCall=function(){
   var st=c.phase==='dial'?'正在呼叫…':(c.phase==='ring'?'邀请你语音通话':'通话中');
   var nm=c.phase==='ring'?esc(TA_NAME())+' 来电':esc(TA_NAME());
   var body='';
+  /* 第130单 · 通话大屏三颗键的图标：
+       挂断 / 取消 / 拒接 = 同一个「实心听筒」（与迷你条那颗键同源，第129单描出来的）；
+       收起 = 换成「向下收进底杠」（ico('mini')）—— 原来与挂断并排两颗一模一样的听筒，
+              用户驳回「怎么全是听筒」，分不出哪个是哪个；
+       接听 = 保留线描话筒（ico('phone')）：听筒拿起 = 接听，这个形态本身就是对的。 */
   if(c.phase==='active'){
     body='<div class="calltime" id="callTime">'+fmtDur(window.callSec?callSec():0)+'</div>'+
       '<div class="callact">'+
-      '<button class="callbtn callbtn--mini" data-act="call-mini" aria-label="收起通话">'+ico('phone')+'收起</button>'+
-      '<button class="callbtn callbtn--hang" data-act="call-hang" aria-label="挂断通话">'+ico('phone')+'挂断</button></div>';
+      '<button class="callbtn callbtn--mini" data-act="call-mini" aria-label="收起通话">'+ico('mini')+'收起</button>'+
+      '<button class="callbtn callbtn--hang" data-act="call-hang" aria-label="挂断通话">'+ico('hangup')+'挂断</button></div>';
   }else if(c.phase==='dial'){
-    body='<div class="callact"><button class="callbtn callbtn--hang" data-act="call-hang" aria-label="取消呼叫">'+ico('phone')+'取消</button></div>';
+    body='<div class="callact"><button class="callbtn callbtn--hang" data-act="call-hang" aria-label="取消呼叫">'+ico('hangup')+'取消</button></div>';
   }else{
     body='<div class="callact">'+
-      '<button class="callbtn callbtn--hang" data-act="call-reject" aria-label="拒接">'+ico('phone')+'拒接</button>'+
+      '<button class="callbtn callbtn--hang" data-act="call-reject" aria-label="拒接">'+ico('hangup')+'拒接</button>'+
       '<button class="callbtn callbtn--ok" data-act="call-accept" aria-label="接听">'+ico('phone')+'接听</button></div>';
   }
   L.innerHTML='<div class="callav'+pulse+'">'+avSpan('ta',92)+'</div><div class="callnm">'+nm+'</div><div class="callst">'+st+'</div>'+body;
@@ -7624,6 +7740,18 @@ window.mrecHTML=function(m){
     (c?(' data-act="mrec-more" role="button" tabindex="0" aria-label="展开或收起撤回的内容"'):'')+'>'+
     '<span class="mrec__t">'+esc(t)+'</span>'+c+'</div>';
 };
+/* 第128单 · 气泡下面那一行：**时间戳 +（只有我发的才有）对钩**。
+   用户说"只有一个对钩感觉有点孤独"，要求对钩左边补上消息时间；梦角那边也补时间。
+   所以两边都有时间，对钩仍只属于我发的（梦角的消息没有送达/已读这回事）。
+   时间只到分钟（fmtT = HH:MM），日期另有 daysep 分隔条管，不重复。
+   ⚠️ 对钩仍是原来的 `.mstat` 节点（类名、aria-label、字体都没动）—— theme T12 / bubcss C12
+     两条判据盯的就是它，套一层容器不影响它们的读数。 */
+window.mfootHTML=function(m){
+  var t=(m&&m.ts)?('<span class="mfoot__t">'+window.fmtT(m.ts)+'</span>'):'';
+  var st=(m.from==='self')?('<div class="mstat '+(m.seen?'mstat--rd':'')+'" aria-label="'+(m.seen?'已读':'送达')+'">'+ico('check')+'</div>'):'';
+  if(!t&&!st)return '';
+  return '<div class="mfoot '+(m.from==='self'?'mfoot--self':'mfoot--ta')+'">'+t+st+'</div>';
+};
 /* ---------- 聊天页 ---------- */
 function msgHTML(m,prev){
   /* 第61单 · 撤回行**最先拦**：不管它原本是文字、字卡、表情还是视频，撤回后一律那一行 */
@@ -7634,10 +7762,12 @@ function msgHTML(m,prev){
     return '<div class="msys'+(m.k==='co'?' msys--co':'')+'">'+esc(m.text)+'</div>';
   }
   if(m.type==='call'){
-    var cl=m.from==='other'?'mrow--ta':'mrow--self';
-    var ca=m.from==='other'?'<span data-act="avtap" aria-label="双击拍一拍">'+avSpan('ta',40)+'</span>':avSpan('me',40);
-    var cs=m.from==='self'?'<div class="mstat '+(m.seen?'mstat--rd':'')+'">'+(m.seen?'已读':'送达')+'</div>':'';
-    return '<div class="mrow '+cl+'" data-id="'+m.id+'">'+ca+'<div class="mcol"><div class="bub bub--call">'+ico('phone')+'<span>'+esc(m.text)+'</span></div>'+cs+'</div></div>';
+    /* 第125单 · 通话结算改成和「陪伴记录」一样的显示（用户给的对照图：那行「一起睡觉 · 5秒」）。
+       原来它画成"头像 + 气泡 + 已读/送达"的整行 ✗；陪伴记录走的是 type:'sys' + k:'co' →
+       `<div class="msys msys--co">文字</div>`（居中胶囊、实线描边）。这里直接复用同一套类名，
+       所以两处样式**永远同源**（以后改 .msys--co 两边一起变），也不再画头像和气泡。
+       data-id 保留：点这条仍能被既有机制认出来。 */
+    return '<div class="msys msys--co" data-id="'+esc(m.id)+'">'+esc(m.text)+'</div>';
   }
   if(m.type==='gift'){
     var gg=window.findGift?findGift(m.gid):null;
@@ -7655,7 +7785,7 @@ function msgHTML(m,prev){
         ?'<div class="gcard__op"><span class="gcard__done">已收下</span></div>'
         :'<div class="gcard__op"><button class="gcard__btn" data-act="gift-claim" data-id="'+gg.id+'">收下这份礼物</button></div>';
     }
-    var gStat=m.from==='self'?'<div class="mstat '+(m.seen?'mstat--rd':'')+'">'+(m.seen?'已读':'送达')+'</div>':'';
+    var gStat=window.mfootHTML(m);   /* 第128单 · 时间 +（我发的才有）对钩 */
     return gDay+'<div class="mrow '+(gTa?'mrow--ta':'mrow--self')+'" data-id="'+m.id+'">'+gAv+
       '<div class="mcol"><div class="bub bub--gift">'+
       '<div class="gcard"><span class="gcard__em">'+esc(gEm)+'</span><span class="gcard__tx">'+
@@ -7677,7 +7807,7 @@ function msgHTML(m,prev){
     var rOp='';
     if(rr&&rTa&&rr.status==='wait')
       rOp='<div class="rprc__op"><button class="rprc__btn" data-act="rp-open-rec" data-id="'+rr.id+'">拆红包</button></div>';
-    var rStat=m.from==='self'?'<div class="mstat '+(m.seen?'mstat--rd':'')+'">'+(m.seen?'已读':'送达')+'</div>':'';
+    var rStat=window.mfootHTML(m);   /* 第128单 · 时间 +（我发的才有）对钩 */
     return rDay+'<div class="mrow '+(rTa?'mrow--ta':'mrow--self')+'" data-id="'+m.id+'">'+rAv+
       '<div class="mcol"><div class="bub bub--rp">'+
       '<div class="rprc"><span class="rprc__ic">'+ico('redpk')+'</span><span class="rprc__tx">'+
@@ -7697,7 +7827,7 @@ function msgHTML(m,prev){
     var tShow=!prev||Math.abs(m.ts-prev.ts)>5*60*1000;
     var tDay=tShow?'<div class="daysep">'+fmtFull(m.ts)+'</div>':'';
     var tAv=tTa?'<span data-act="avtap" aria-label="双击拍一拍">'+avSpan('ta',40)+'</span>':avSpan('me',40);
-    var tStat=m.from==='self'?'<div class="mstat '+(m.seen?'mstat--rd':'')+'">'+(m.seen?'已读':'送达')+'</div>':'';
+    var tStat=window.mfootHTML(m);   /* 第128单 · 时间 +（我发的才有）对钩 */
     return tDay+'<div class="mrow '+(tTa?'mrow--ta':'mrow--self')+'" data-id="'+m.id+'">'+tAv+
       '<div class="mcol"><div class="bub bub--tarot">'+tarotMsgHTML(m)+'</div>'+tStat+'</div></div>';
   }
@@ -7706,16 +7836,29 @@ function msgHTML(m,prev){
     var oShow=!prev||Math.abs(m.ts-prev.ts)>5*60*1000;
     var oDay=oShow?'<div class="daysep">'+fmtFull(m.ts)+'</div>':'';
     var oAv=oTa?'<span data-act="avtap" aria-label="双击拍一拍">'+avSpan('ta',40)+'</span>':avSpan('me',40);
-    var oStat=m.from==='self'?'<div class="mstat '+(m.seen?'mstat--rd':'')+'">'+(m.seen?'已读':'送达')+'</div>':'';
+    var oStat=window.mfootHTML(m);   /* 第128单 · 时间 +（我发的才有）对钩 */
     return oDay+'<div class="mrow '+(oTa?'mrow--ta':'mrow--self')+'" data-id="'+m.id+'">'+oAv+
       '<div class="mcol"><div class="bub bub--co">'+ico('heart')+'<span>'+esc(m.text)+'</span></div>'+oStat+'</div></div>';
+  }
+  /* 第122单 · 图片消息：等比显示（用原始宽高算 aspect-ratio，不裁切），上限由 CSS 卡住
+     （≤60% 宽 / 240px 高）。v1 只展示，不加"点了没反应"的假控件。 */
+  if(m.type==='img'){
+    var iTa=m.from==='other';
+    var iShow=!prev||Math.abs(m.ts-prev.ts)>5*60*1000;
+    var iDay=iShow?'<div class="daysep">'+fmtFull(m.ts)+'</div>':'';
+    var iAv=iTa?'<span data-act="avtap" aria-label="双击拍一拍">'+avSpan('ta',40)+'</span>':avSpan('me',40);
+    var iStat=window.mfootHTML(m);   /* 第128单 · 时间 +（我发的才有）对钩 */
+    var iRatio=(m.w&&m.h)?(' style="aspect-ratio:'+m.w+'/'+m.h+'"'):'';
+    return iDay+'<div class="mrow '+(iTa?'mrow--ta':'mrow--self')+'" data-id="'+m.id+'">'+iAv+
+      '<div class="mcol"><div class="bub bub--img"><img class="msimg" src="'+esc(m.src)+'" alt="图片"'+iRatio+'></div>'+
+      iStat+'</div></div>';
   }
   if(m.type==='stk'){
     var kTa=m.from==='other';
     var kShow=!prev||Math.abs(m.ts-prev.ts)>5*60*1000;
     var kDay=kShow?'<div class="daysep">'+fmtFull(m.ts)+'</div>':'';
     var kAv=kTa?'<span data-act="avtap" aria-label="双击拍一拍">'+avSpan('ta',40)+'</span>':avSpan('me',40);
-    var kStat=m.from==='self'?'<div class="mstat '+(m.seen?'mstat--rd':'')+'">'+(m.seen?'已读':'送达')+'</div>':'';
+    var kStat=window.mfootHTML(m);   /* 第128单 · 时间 +（我发的才有）对钩 */
     return kDay+'<div class="mrow '+(kTa?'mrow--ta':'mrow--self')+'" data-id="'+m.id+'">'+kAv+
       '<div class="mcol"><div class="bub bub--stk">'+stkArtHTML(m.stk,100)+'</div>'+kStat+'</div></div>';   /* 第108单 · 独立贴图 168→100（用户：发出来太大） */
   }
@@ -7727,7 +7870,7 @@ function msgHTML(m,prev){
   var av=fromTa?'<span data-act="avtap" aria-label="双击拍一拍">'+avSpan('ta',40)+'</span>':avSpan('me',40);
   var bub=m.type==='card'?'bub bub--card':'bub';
   if(m.stk)bub+=' bub--mixed';                              /* 表情混进同一条：文字下面再垫一张 */
-  var stat=m.from==='self'?'<div class="mstat '+(m.seen?'mstat--rd':'')+'">'+(m.seen?'已读':'送达')+'</div>':'';
+  var stat=window.mfootHTML(m);   /* 第128单 · 时间 +（我发的才有）对钩 */
   /* 第60单 · 引用块在正文**上方**（工单第16条：灰底 + 左竖线 + 小字 + 原文快照）。 */
   var body=window.bubQuoteHTML(m)+(m.text?esc(m.text):'')+(m.stk?stkArtHTML(m.stk,100):'');   /* 第108单 · 贴在文字下的贴图 150→100 */
   return day+'<div class="mrow '+cls+'" data-id="'+m.id+'">'+av+'<div class="mcol"><div class="'+bub+'">'+body+'</div>'+stat+'</div></div>';
@@ -7742,7 +7885,7 @@ window.vidMsgHTML=function(m,prev){
   var vShow=!prev||Math.abs(m.ts-prev.ts)>5*60*1000;
   var vDay=vShow?'<div class="daysep">'+fmtFull(m.ts)+'</div>':'';
   var vAv=vTa?'<span data-act="avtap" aria-label="双击拍一拍">'+avSpan('ta',40)+'</span>':avSpan('me',40);
-  var vStat=m.from==='self'?'<div class="mstat '+(m.seen?'mstat--rd':'')+'">'+(m.seen?'已读':'送达')+'</div>':'';
+  var vStat=window.mfootHTML(m);   /* 第128单 · 时间 +（我发的才有）对钩 */
   var v=window.vidFind?window.vidFind(m.vid):null;
   var body;
   if(!v||!v.st){
@@ -8944,7 +9087,8 @@ window.renderSettings=function(){
       '<div class="set-sec"><div class="set-sec__t">Data · 数据</div>'+
         '<div class="setrow"><span class="setrow__lb">导出全部数据<div class="setrow__ds">聊天 + 字卡 + 设置，JSON 备份</div></span><button class="mini" data-act="data-export">导出</button></div>'+
         '<div class="setrow"><span class="setrow__lb">导入数据<div class="setrow__ds">本站备份恢复，或 milk 字卡导入</div></span><button class="mini" data-act="data-import">导入</button></div>'+
-        '<div class="setrow"><span class="setrow__lb">清空重置<div class="setrow__ds">删除全部本地数据，恢复出厂</div></span><button class="mini" style="color:#d96666;border-color:#f0c9c9" data-act="factory">重置</button></div>'+
+        '<div class="setrow"><span class="setrow__lb">清空聊天记录<div class="setrow__ds">只删聊天里的消息 · 字卡 / 表情包 / 朋友圈 / 信箱 / 碎影都不动</div></span><button class="mini" data-act="data-clear-chat">清空</button></div>'+
+'<div class="setrow"><span class="setrow__lb">清空重置<div class="setrow__ds">删除全部本地数据，恢复出厂</div></span><button class="mini" style="color:#d96666;border-color:#f0c9c9" data-act="factory">重置</button></div>'+
       '</div>'+
       '<div class="about">梦角 · 所有数据只存在本机浏览器</div>'+
     '</div>'+
@@ -9050,16 +9194,22 @@ window.taQuoteMe=function(){
   var prob=Math.max(0,Math.min(100,Math.round(+(raw||0))));
   if(prob<=0)return null;
   if(Math.random()*100>=prob)return null;
-  var msgs=S.msgs||[];
-  for(var i=msgs.length-1;i>=0;i--){
-    var m=msgs[i];
+  /* 第121单 · 工单第16条原文：**每次抽取只取「最近 8 条 ∩ 30 分钟内我的消息」**。
+     原来这里是从最新往回扫、**第一个命中就返回** —— 于是永远只引最近一条（单主一眼看出不对）。
+     现在：先截出「最近 8 条消息」这个窗口，再在窗口里筛出**我发的 + 可引用 + 30 分钟内**的，
+     随机抽一条（"不重复引同一句"这条老规矩保留）。 */
+  var msgs=S.msgs||[],now=Date.now(),win=msgs.slice(-8),pool=[];
+  for(var i=0;i<win.length;i++){
+    var m=win[i];
     if(!m||m.from!=='self')continue;
+    if(!m.ts||(now-m.ts)>30*60*1000)continue;          /* 30 分钟窗口 */
     var q=window.quoteOf(m);
     if(!q||!q.label)continue;
-    if(m.id&&m.id===RT.lastQid)continue;
-    return {q:q,id:m.id};
+    if(m.id&&m.id===RT.lastQid)continue;               /* 不重复引同一句 */
+    pool.push({q:q,id:m.id});
   }
-  return null;
+  if(!pool.length)return null;                         /* 池里没有合适的 → 这次就不引（不退回"硬引最近一条"） */
+  return pool[Math.floor(Math.random()*pool.length)];
 };
 /* 把引用挂到 TA 将要发出的那条消息上（没抽到就原样返回） */
 window.taQuoteAttach=function(m){
@@ -10314,6 +10464,35 @@ document.addEventListener('click',function(e){
   if(act==='panel'){openPanel(el.getAttribute('data-p'));return;}
   /* ---- 聊天视频（第24单） ---- */
   if(act==='vid-send'){closePanel();pickFileRaw('video/*',function(f){window.vidAdd(f);});return;}
+  /* 第122单 · 从相册发一张图片：等比压缩（沿用 fitDataUrl，绝不裁切）→ storeImage（配了 OSS 就上云，
+     否则本机 dataURL）→ 发一条 type:'img' 的消息（载荷 src/w/h 与表情条目同构）。
+     发完走和文字消息同一条收尾（afterSelfSend：标记已读、按概率回我）。 */
+  if(act==='img-send'){
+    closePanel();
+    pickFileRaw('image/*',function(f){
+      if(!f)return;
+      toast('正在处理图片…');
+      var fr=new FileReader();
+      fr.onload=function(){
+        var im=new Image();
+        im.onload=function(){
+          var url=fitDataUrl(im,1280,0.82);
+          if(!url){toast('这张图读不出来，换一张试试');return;}
+          window.storeImage(url,function(su){
+            var m={from:'self',type:'img',src:su,w:im.naturalWidth,h:im.naturalHeight,rd:0,seen:0};
+            addMsg(m);
+            if(RT.route==='chat')renderThread();
+            LATER(function(){if(window.afterSelfSend)window.afterSelfSend(m);},400);
+          });
+        };
+        im.onerror=function(){toast('这张图读不出来，换一张试试');};
+        im.src=fr.result;
+      };
+      fr.onerror=function(){toast('读文件失败，换一张试试');};
+      fr.readAsDataURL(f);
+    });
+    return;
+  }
   if(act==='vid-open'){window.openVidPlay(el.getAttribute('data-id')||'');return;}
   if(act==='vid-close'){window.closeVidPlay();return;}
   if(act==='vid-manage'){window.vidMgrSheet();return;}
@@ -11434,7 +11613,70 @@ if(act==='pnl-reset'){
     openMomSheet();return;
   }
   if(act==='m-place-clear'){RT.momPlace='';openMomSheet();return;}
-  if(act==='m-stk'){RT.stkFor='mom';openPanelStk();return;}
+    /* 第123单 · 朋友圈：选图片 / 选视频 / 去掉；以及点开视频（媒体仓里的 momv: 键）。
+     ⚠️ 视频**不走 vidAdd** —— 那会把它塞进聊天的 S.vids 并吃 VID_MAX 段数上限 ✗；
+        这里直接用媒体仓原语 mdPut/mdGet/mdUrl，动态里只留 {id,w,h,dur,size}。 */
+  if(act==='m-img'){
+    pickFileRaw('image/*',function(f){
+      if(!f)return;
+      var fr=new FileReader();
+      fr.onload=function(){
+        var im=new Image();
+        im.onload=function(){
+          var url=fitDataUrl(im,1280,0.82);
+          if(!url){toast('这张图读不出来，换一张试试');return;}
+          RT.momImg={src:url,w:im.naturalWidth,h:im.naturalHeight};
+          openMomSheet();toast('图片已选好');
+        };
+        im.onerror=function(){toast('这张图读不出来，换一张试试');};
+        im.src=fr.result;
+      };
+      fr.onerror=function(){toast('读文件失败，换一张试试');};
+      fr.readAsDataURL(f);
+    });
+    return;
+  }
+  if(act==='m-img-clear'){RT.momImg=null;openMomSheet();return;}
+  if(act==='m-vid'){
+    pickFileRaw('video/*',function(f){
+      if(!f)return;
+      if(!window.nzHasIdb()){toast('这个环境存不了视频（没有本机数据库）');return;}
+      if(f.size>window.VID_ONE){toast('这段视频 '+window.nzSizeText(f.size)+'，超过单段上限 '+window.nzSizeText(window.VID_ONE));return;}
+      toast('正在读取视频…');
+      window.vidProbe(f,function(r){
+        if(r.err){toast(r.err);return;}
+        var id=uid('mv');
+        var body=(f.type&&f.type.indexOf('video/')===0)?f:new Blob([f],{type:window.vidMimeOf(f.name,f.type)});
+        window.mdPut('momv:'+id,body,function(ok){
+          if(!ok){toast('视频没存进去，可能空间不够');return;}
+          RT.momVid={id:id,w:r.w,h:r.h,dur:r.dur,size:body.size||f.size};
+          openMomSheet();toast('视频已选好');
+        });
+      });
+    });
+    return;
+  }
+  if(act==='m-vid-clear'){RT.momVid=null;openMomSheet();return;}
+  if(act==='momv-play'){
+    var mvid=el.getAttribute('data-id')||'';
+    if(!mvid)return;
+    window.mdGet('momv:'+mvid,function(b){
+      if(!b){toast('这段视频找不到了');return;}
+      var vurl=window.mdUrl(b);
+      var LV=document.getElementById('momvLayer');
+      if(!LV){LV=document.createElement('div');LV.id='momvLayer';LV.className='vidfull';document.body.appendChild(LV);}
+      LV.innerHTML='<button class="vidfull__x" data-act="momv-close" aria-label="关闭">'+ico('x')+'</button>'+
+        '<video src="'+vurl+'" controls autoplay playsinline style="max-width:100%;max-height:100%"></video>';
+      LV.classList.add('open');
+    });
+    return;
+  }
+  if(act==='momv-close'){
+    var LC=document.getElementById('momvLayer');
+    if(LC){LC.classList.remove('open');LC.innerHTML='';}
+    return;
+  }
+if(act==='m-stk'){RT.stkFor='mom';openPanelStk();return;}
   if(act==='m-stk-pick'){                              /* 贴纸选择器回来：写进草稿再打开发布面板 */
     var mf=stkFindItem(sid);
     if(mf)RT.momStk=stkPayload(mf.it,mf.g.id,mf.g.name);
@@ -11918,6 +12160,29 @@ function lkAddQDo(){
       S.settings[ck]=!S.settings[ck];save();renderSettings();
       toast((ck==='callOn'?'模拟通话':(ck==='callInOn'?'TA 主动来电':'通话中挂断'))+(S.settings[ck]?'已开启':'已关闭'));
     }
+    return;
+  }
+  /* 第126单 · 只清聊天记录：不碰字卡 / 表情包 / 朋友圈 / 信箱 / 碎影（用户明确要"单独清空"）。
+     破坏性操作照样先确认（照视频 1403 / 塔罗 2622 那套弹层写法）。 */
+  if(act==='data-clear-chat'){
+    /* ⚠️ openSheet 只吃两个参数 (title, html) —— 按钮必须拼进正文串，
+       当成第三个参数传会被静默丢掉（弹层里就没有确认键了）。（对照 vid-clear 的写法） */
+    openSheet('清空聊天记录',
+      '<p style="font-size:calc(13px * var(--fk,1));line-height:1.8;color:var(--ink2);margin-bottom:16px">只清掉聊天里的消息（你和 '+esc(TA_NAME())+' 的全部往来）。<b>字卡 / 表情包 / 朋友圈 / 信箱 / 碎影都不动</b>。<br>清掉不能恢复；要留底就先做上面的「导出全部数据」。</p>'+
+      '<button class="bigbtn bigbtn--danger" data-act="data-clear-chat-do">确认清空</button>'+
+      '<button class="bigbtn bigbtn--ghost" data-act="data-clear-chat-cancel">再想想</button>');
+    return;
+  }
+  if(act==='data-clear-chat-cancel'){closeSheet();return;}
+  if(act==='data-clear-chat-do'){
+    S.msgs=[];
+    S.pin={id:'',ts:0};          /* 置顶指向的那条没了 → 一起清，免得横幅挂个空引用 */
+    RT.lastQid='';               /* 引用去重复位 */
+    RT.quote=null;               /* 正开着的待引用条一起收掉 */
+    save();closeSheet();
+    if(RT.route==='chat')renderChat();
+    paintTab();
+    toast('聊天记录已清空');
     return;
   }
   if(act==='data-export'){exportAll();return;}
@@ -13281,13 +13546,13 @@ function refreshMomCard(id){
 window.publishMoment=function(){
   var text=(RT.momDraft||'').trim();
   var stk=RT.momStk||null;
-  if(!text&&!stk){toast('写一句，或者插一张贴纸');return false;}
-  var m={id:uid('M'),dir:'me',text:text.slice(0,MOM_MAX),stk:stk,place:RT.momPlace||'',
+  if(!text&&!stk&&!RT.momImg&&!RT.momVid){toast('写一句，或者插一张贴纸 / 选一张图');return false;}
+  var m={id:uid('M'),dir:'me',text:text.slice(0,MOM_MAX),stk:stk,img:(RT.momImg&&RT.momImg.src)?RT.momImg.src:null,vid:RT.momVid||null,place:RT.momPlace||'',
     likes:{ta:0,me:0},comments:[],seen:1,ts:Date.now()};
   S.moments.unshift(m);
   if(S.moments.length>300)S.moments=S.moments.slice(0,300);
   save();
-  RT.momDraft='';RT.momStk=null;RT.momPlace='';       /* 发布成功：清空输入框与草稿 */
+  RT.momDraft='';RT.momStk=null;RT.momPlace='';RT.momImg=null;RT.momVid=null;       /* 发布成功：清空输入框与草稿（含图/视频） */
   closeSheet();
   if(RT.route==='moments')renderMoments();
   if(RT.route==='more')renderMore();
@@ -13903,8 +14168,20 @@ function fitView(){
   var vv=window.visualViewport;
   var h=vv?Math.round(vv.height):window.innerHeight;
   var top=vv?Math.round(vv.offsetTop||0):0;
+  /* 第124单 · iOS（iPhone）复报"一弹输入法就崩、聊天记录显示不出来"，截图里整个 app 都被抬出可视区。
+     根因：**两种引擎的键盘行为形状不同**，第111单只治了 Android 那一种 ✗——
+       · 旧 Android：视觉视口**单纯下移**（offsetTop>0，文档本身没滚）→ 用 --vvt 把 app 反向抬回去 ✔；
+       · iOS Safari：**整页被网页滚动**（pageTop/scrollY > 0）→ 这时再叠加 --vvt 就是**双重补偿**，
+         app 被抬到屏幕外，看着像崩掉 ✗（单主那张"只剩背景色 +键盘"的图就是这个）。
+     按"文档有没有自己滚过"分流，不嗅探 UA：
+       滚过 → 把文档滚回 0（app 高度已是 --vvh，正好贴住键盘上沿），--vvt 归零；
+       没滚过（纯位移）→ 保留 --vvt 抵消。 */
+  var scrolled=0;
+  try{ scrolled=Math.max(Math.round((vv&&vv.pageTop)||0),Math.round(window.scrollY||0)); }catch(e){}
+  if(scrolled>0){ try{ window.scrollTo(0,0); }catch(e){} }
+  var comp=(scrolled>0)?0:top;
   document.documentElement.style.setProperty('--vvh',h+'px');
-  document.documentElement.style.setProperty('--vvt',(-top)+'px');
+  document.documentElement.style.setProperty('--vvt',(-comp)+'px');
   if(window.alignActs)window.alignActs();     /* 第118单 · 视口变了跟着重新对齐图标排 */
 }
 /* ---------- 第118单 · 顶栏图标排 = 自对齐（不再依赖任何常数/公式） ----------
