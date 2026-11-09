@@ -758,6 +758,12 @@ img{display:block;}
 .setrow__lb{flex:1;font-size:calc(13.5px * var(--fk,1));color:var(--ink);}
 .setrow__ds{font-size:calc(10.5px * var(--fk,1));color:var(--ink3);margin-top:2px;letter-spacing:.5px;}
 .setrow .mini{flex:none;}
+/* 第166单 · 密钥这一行：输入框要能放下整条 JWT，旁边还要站着「测一下」——
+   横排挤不下，改成"说明占一整行、控件另起一行"。只作用于这一行（.setrow--stack）。 */
+.setrow--stack{flex-wrap:wrap;}
+.setrow--stack .setrow__lb{flex:1 0 100%;}
+.setrow--stack .txt{flex:1;min-width:0;max-width:none;}
+.setrow--stack .mini{flex:none;white-space:nowrap;}
 /* 第39单 · 设置行里的不透明度滑杆（顶栏/底栏）：与自选色滑杆同一套轨道与拇指 */
 .setrow input[type=range]{
   width:132px;flex:none;-webkit-appearance:none;appearance:none;background:transparent;height:22px;margin:0;
@@ -1019,7 +1025,10 @@ img{display:block;}
   flex-direction:column;gap:6px;padding:10px 12px;border-radius:16px;
   background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);}
 #vcPanel.open{display:flex;}
-.vclog{overflow-y:auto;display:flex;flex-direction:column;gap:6px;-webkit-overflow-scrolling:touch;}
+/* 第166单修正 · 滚动必须发生在 .vclog 里，而不是让面板整体往上长（长了就盖住按钮）。
+   flex:1 + min-height:0 是这套的关键：没有 min-height:0，flex 子项的 min-height:auto
+   会让它撑到内容高度，overflow:auto 就永远不生效 —— 面板于是继续往上长。 */
+.vclog{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;-webkit-overflow-scrolling:touch;}
 .vcrow{font-size:calc(12.5px * var(--fk,1));line-height:1.6;color:rgba(255,255,255,.9);word-break:break-word;}
 .vcrow__who{display:inline-block;margin-right:6px;font-size:calc(11px * var(--fk,1));color:rgba(255,255,255,.55);letter-spacing:1px;}
 .vcrow--me{color:#fff;opacity:.86;}
@@ -5186,7 +5195,11 @@ function normS(raw){
      ⚠️ vcKey / voiceId / voiceIdJa 是**字符串凭证**：不做 trim 之外的清洗，
         也不能用 safeImgDataUrl 那类"图片引用"校验（它们是普通文本）。 */
   o.settings.vcEngine=(st.vcEngine==='minimax')?'minimax':'none';
-  o.settings.vcKey=(typeof st.vcKey==='string')?st.vcKey.trim().slice(0,200):'';
+  /* ⚠️ 上限必须够长：MiniMax 的 Key 是一长串 JWT（实测 200~800 字都见过）。
+     原来这里写 slice(0,200)，把真实 Key 从中间截断 —— 结构还在、签名全废，
+     于是接口一律回「2049 invalid api key」。实测：输入 297 字 → 刷新后只剩 200 字。
+     这类"读档时被默认值/上限吃掉"的坑本站犯过好几次，这次是**凭证**，代价是整个功能不可用。 */
+  o.settings.vcKey=(typeof st.vcKey==='string')?st.vcKey.trim().slice(0,4096):'';
   if(typeof st.voiceId==='string'&&st.voiceId.trim())o.settings.voiceId=st.voiceId.trim().slice(0,256);
   if(typeof st.voiceIdJa==='string'&&st.voiceIdJa.trim())o.settings.voiceIdJa=st.voiceIdJa.trim().slice(0,256);
   o.settings.vcLang=(st.vcLang==='ja')?'ja':'zh';
@@ -5450,6 +5463,10 @@ window.RT={route:'chat',call:{phase:'idle',dir:null,startTs:0,connectTs:0,timers
   /* 第166单 · 实时语音通话会话（不落档：麦克风/音频节点这些是"这一刻还活着"的物件，
      存档里存它们没有意义；要留的是 S.vcLog 里那条记录）。null = 没开。 */
   vc:null,
+  /* 第166单修正 · 上一次请求**成功**的 MiniMax 域名（内存态，不落档）。
+     下次通话把它排到最前：正常用户第二次只发一次请求；换了 Key 的人也会自动落到对的那一站
+     （因为回退链会一直试到成功为止，成功的那条被记住）。 */
+  vcHost:'',
   /* 字卡库（第45单）：libTab = 当前大类 card|poke|stk（字卡 / 双方的拍一拍 / 表情包） */
   libTab:'card',
   /* 设置页折叠（第46单）：setOpen = 已展开的类别键（如 {Theme:1,'Poke#1':1}）。
@@ -10505,8 +10522,10 @@ window.renderSettings=function(){
            用户要的是"在语音通话上加个附加功能"，配置放同一栏才找得到。 */
         '<div class="setrow"><span class="setrow__lb">'+esc(TA_NAME())+'用真人音色说话<div class="setrow__ds">接通后可以开「实时通话」：抽 2~5 张字卡用 MiniMax 复刻音色读出来。关掉就只出文字，跟原来的模拟通话一样</div></span>'+
           '<button class="tgl '+(S.settings.vcEngine==='minimax'?'on':'')+'" data-act="vc-toggle" data-id="vcEngine" role="switch" aria-checked="'+(S.settings.vcEngine==='minimax'?'true':'false')+'"></button></div>'+
-        '<div class="setrow"><span class="setrow__lb">MiniMax 密钥<div class="setrow__ds">只存在本机，不进备份；和塔罗那个 AI 密钥同一条规矩</div></span>'+
-          '<input class="txt" data-inp="vcKey" value="'+esc(S.settings.vcKey||'')+'" placeholder="MiniMax API Key" aria-label="MiniMax 密钥" style="max-width:150px"></div>'+
+        '<div class="setrow setrow--stack"><span class="setrow__lb">MiniMax 密钥<div class="setrow__ds">只存在本机，不进备份；和塔罗那个 AI 密钥同一条规矩。'+
+          'Key 是一长串 JWT，要整条粘贴（漏字符会报 2049），填好点右边「测一下」当场验</div></span>'+
+          '<input class="txt" data-inp="vcKey" value="'+esc(S.settings.vcKey||'')+'" placeholder="MiniMax API Key（整条粘贴）" aria-label="MiniMax 密钥" spellcheck="false" autocapitalize="off" autocomplete="off">'+
+          '<button class="mini mini--soli" data-act="vc-test" style="margin-left:6px;white-space:nowrap">测一下</button></div>'+
         '<div class="setrow"><span class="setrow__lb">中文音色 ID<div class="setrow__ds">复刻出来的 voice_id（如 clone_voice_hn）。'+
           'MiniMax 会清除 7 天没用过的复刻音色 —— 常用就不怕</div></span>'+
           '<input class="txt" data-inp="voiceId" value="'+esc(S.settings.voiceId||'')+'" placeholder="clone_voice_hn" aria-label="中文音色 ID" style="max-width:150px"></div>'+
@@ -14540,6 +14559,19 @@ function lkAddQDo(){
     window.vcOpenRecord(vid);
     return;
   }
+  /* 第166单修正 · 「测一下」：只发一条**最短**的 TTS 请求，把三件事当场说清楚 ——
+     Key 能不能用、落在哪个服务区域、用的哪条音色 ID。
+     为什么需要它：用户拿到 2049 时无法判断是"Key 抄错"还是"Key 属于另一站"，
+     而这两个原因的处理办法完全不同（重抄 vs 换域名/换账号）。这里一次请求就能分辨。 */
+  if(act==='vc-test'){
+    if(!(S.settings.vcKey||'').trim()){toast('先填 MiniMax 密钥');return;}
+    if(!window.vcVoiceId()){toast('先填音色 ID');return;}
+    toast('正在试…');
+    window.vcTTS('测试一下')
+      .then(function(){toast('可以了 · 音色 '+window.vcVoiceId()+' · '+window.vcHostName());})
+      .catch(function(err){toast((err&&err.message)||'测试失败',6000);});
+    return;
+  }
   if(act==='call-fake'){startCall('in');return;}
   if(act==='call-accept'){
     if(RT.call&&RT.call.phase==='ring'){clearCallTimers();RT.call.timers=[];callConnect();}
@@ -16771,7 +16803,7 @@ window.startCall=startCall;
         ⇒ 实时模式只能走 HTTP 的 t2a_v2（非流式取整段，2~5 张短卡片的延迟可接受）；
      ③ 复刻音色 7 天不用会被 MiniMax 删掉 ⇒ 每次通话都用一次，设置页也写明了。
    ⚠️ 只抽字卡回复，**不调 AI**（用户明确要求）—— 抽卡走 vcPickCards，全程不碰 S.ai。 */
-var VC_HOSTS=['https://api.minimax.io','https://api.minimaxi.com'];
+var VC_HOSTS=['https://api.minimax.io','https://api.minimaxi.com','https://api.minimax.chat'];
 var VC_VOICE_TH=0.012;             /* RMS 阈值：高于它算"在说话"（实测安静环境底噪 <0.004） */
 var VC_MAX_MS=30000;               /* 单轮录音上限：说 30 秒还没停就强制收尾，防跑飞 */
 function vcVoiceId(){return S.settings.vcLang==='ja'?(S.settings.voiceIdJa||''):(S.settings.voiceId||'');}
@@ -16796,17 +16828,55 @@ window.vcPickCards=function(n){
   if(n<=0)return [];
   return uniq.slice(0,n);
 };
-/* 统一的 MiniMax 请求：第一个域名网络失败才换第二个（HTTP 错误码不换 —— 那是接口在回话） */
+/* 统一的 MiniMax 请求。**两种失败都要换域名**：
+     ① 网络连不上（域名解析/被墙）；
+     ② **鉴权类失败**（1004 没带密钥 / 2049 密钥无效 / HTTP 401·403）。
+   ② 为什么也要换：MiniMax 的国际站 `api.minimax.io` 与国内站 `api.minimaxi.com`
+      是两套账号体系，**同一条 Key 不通用**；用户手里的 Key 属于哪一站我们无从判断，
+      与其让人自己猜，不如两条各试一次（多一次往返，几十毫秒的事）。
+      实测教训：只在网络失败时换域名 → 拿国内站签发的 Key 打国际站，永远是 2049，
+      而第二个域名一次都没被请求过（探针 probe-166-diag2 的 __hosts 只有 .io 一条）。
+   返回 {r,j,text,host}：body 已经读成文本并尽量解析成 JSON —— 上层不必再读一次流。 */
+function vcAuthFail(r,j){
+  var code=(j&&j.base_resp&&j.base_resp.status_code);
+  if(code===1004||code===2049)return true;
+  if(r.status===401||r.status===403)return true;
+  var em=(j&&j.error&&String(j.error.message||''))||'';
+  if(/\((1004|2049)\)|invalid api key/i.test(em))return true;
+  return false;
+}
 function vcFetch(path,makeInit){
   var hosts=VC_HOSTS.slice();
+  /* 上次成功的域名排最前：正常用户的第二次通话就只发一次请求 */
+  if(RT.vcHost&&hosts.indexOf(RT.vcHost)>=0)hosts=[RT.vcHost].concat(hosts.filter(function(h){return h!==RT.vcHost;}));
   return (function next(k){
-    if(k>=hosts.length)return Promise.reject(new Error('两个域名都连不上'));
+    if(k>=hosts.length)return Promise.reject(new Error('两个服务区域都连不上'));
     var init=makeInit();
     init.headers=init.headers||{};
     init.headers['Authorization']='Bearer '+((S.settings.vcKey||'').trim());
-    return fetch(hosts[k]+path,init).catch(function(){return next(k+1);});
+    return fetch(hosts[k]+path,init).then(function(r){
+      return r.text().then(function(t){
+        var j={};try{j=JSON.parse(t);}catch(e){}
+        if(k+1<hosts.length&&vcAuthFail(r,j))return next(k+1);
+        RT.vcHost=hosts[k];
+        return {r:r,j:j,text:t,host:hosts[k]};
+      });
+    },function(){return next(k+1);});
   })(0);
 }
+/* 鉴权失败时给用户一句能照做的话（而不是把 status_msg 原样甩回去） */
+function vcAuthMsg(host){
+  var where=(host&&host.indexOf('minimaxi.com')>=0)?'国内站':(host&&host.indexOf('minimax.chat')>=0?'国内站(chat)':'国际站');
+  return '密钥无效（2049）：两个服务区域都试过了。'+
+    '① 到 MiniMax 控制台重新整条复制一次（JWT 很长，漏一个字符就会这样）；'+
+    '② 确认 Key 与「复刻音色」是同一个账号/'+where+'的。';
+}
+window.vcHostName=function(){
+  var h=RT.vcHost||'';
+  if(!h)return '还没试过';
+  if(h.indexOf('minimaxi.com')>=0||h.indexOf('minimax.chat')>=0)return '国内站';
+  return '国际站';
+};
 /* 把一段文字合成成 mp3 Blob（非流式 + hex：短句最稳，不用处理分块边界） */
 window.vcTTS=function(text){
   var vid=vcVoiceId();
@@ -16826,18 +16896,18 @@ window.vcTTS=function(text){
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(payload)
-  };}).then(function(r){
-    return r.json().catch(function(){return {};}).then(function(j){
-      var br=(j&&j.base_resp)||{};
-      if(br.status_code!==0){
-        throw new Error('TTS '+(br.status_code||('HTTP '+r.status))+'：'+(br.status_msg||'合成失败'));
-      }
-      var hex=(j&&j.data&&j.data.audio)||'';
-      if(!hex)throw new Error('TTS 没返回音频');
-      var n=hex.length>>1, u8=new Uint8Array(n);
-      for(var i=0;i<n;i++)u8[i]=parseInt(hex.substr(i*2,2),16);
-      return new Blob([u8],{type:'audio/mpeg'});
-    });
+  };}).then(function(o){
+    var j=o.j,r=o.r;
+    var br=(j&&j.base_resp)||{};
+    if(br.status_code!==0){
+      if(br.status_code===1004||br.status_code===2049)throw new Error(vcAuthMsg(o.host));
+      throw new Error('TTS '+(br.status_code||('HTTP '+r.status))+'：'+(br.status_msg||'合成失败'));
+    }
+    var hex=(j&&j.data&&j.data.audio)||'';
+    if(!hex)throw new Error('TTS 没返回音频');
+    var n=hex.length>>1, u8=new Uint8Array(n);
+    for(var i=0;i<n;i++)u8[i]=parseInt(hex.substr(i*2,2),16);
+    return new Blob([u8],{type:'audio/mpeg'});
   });
 };
 /* 语音识别：传 WAV，拿回文字。response_format=json 只取整段文本（不需要逐字时间戳） */
@@ -16848,12 +16918,14 @@ window.vcASR=function(blob){
     fd.append('response_format','json');
     fd.append('file',blob,'vc.wav');
     return {method:'POST',body:fd};    /* 不手写 Content-Type：让浏览器带 boundary */
-  }).then(function(r){
-    return r.text().then(function(t){
-      var j={};try{j=JSON.parse(t);}catch(e){}
-      if(!r.ok||j.error)throw new Error('识别失败：'+((j.error&&j.error.message)||('HTTP '+r.status)));
-      return String(j.text||'').trim();
-    });
+  }).then(function(o){
+    var r=o.r,j=o.j||{};
+    if(!r.ok||j.error){
+      var em=(j.error&&j.error.message)||('HTTP '+r.status);
+      if(/\((1004|2049)\)/.test(String(em)))throw new Error(vcAuthMsg(o.host));
+      throw new Error('识别失败：'+em);
+    }
+    return String(j.text||'').trim();
   });
 };
 /* PCM Float32 → 16k 单声道 16bit WAV。
@@ -16890,6 +16962,29 @@ function vcState(){
   if(!RT.vc)RT.vc=vcNew();
   return RT.vc;
 }
+/* 面板的**高度自适应**：把面板锁在「按钮下方那一条」里，绝不许长上去盖住按钮。
+   为什么必须算：面板是绝对定位 + bottom:96px + max-height:46%，内容一多就往上长 ——
+   实测 844 高的屏幕上，按钮在 510~572，面板顶部窜到 547，**盖住按钮 25px**，
+   而按钮中心点还在面板外，所以"看得见却点不到"的反馈是分区域的、更像偶发。
+   用户在真机上截到的那张是 4 条长回合，面板整个压在按钮上，三颗键全点不了。
+   做法：拿 .callact 的实际底边，把可用高度算出来当 max-height；还不够就把底边也下移。 */
+function vcFit(){
+  var p=$('vcPanel'),L=$('callLayer');
+  if(!p||!L)return;
+  var act=L.querySelector('.callact');
+  if(!act){p.style.maxHeight='';return;}
+  /* 参考高度用**层自己**的矩形，不是 window.innerHeight ——
+     这个站在桌面浏览器里是固定宽高的"手机框"，用窗口高度会算大，面板又会长上去。 */
+  var lr=L.getBoundingClientRect();
+  var ab=act.getBoundingClientRect().bottom-lr.top;
+  var bottom=96,mh=lr.height-bottom-ab-8;
+  if(mh<72){bottom=12;mh=lr.height-bottom-ab-8;}   /* 还挤就把底边也下移，尽量多给一点 */
+  p.style.bottom=bottom+'px';
+  p.style.maxHeight=Math.max(56,Math.round(mh))+'px';
+}
+window.vcFit=vcFit;
+/* 视口变了（软键盘、旋转、桌面端缩放窗口）就重算一次；只有面板开着时才动 DOM */
+window.addEventListener('resize',function(){ if(RT&&RT.vc&&RT.vc&&RT.call&&RT.call.phase==='active')vcFit(); });
 /* 面板重画：只换 #vcPanel 的 innerHTML，不动整层（整层重画会把通话动画和按钮状态一起打回原样） */
 window.vcPaint=function(){
   var p=$('vcPanel');if(!p)return;
@@ -16905,6 +17000,7 @@ window.vcPaint=function(){
   var st=v.busy||'';
   p.innerHTML=(rows?('<div class="vclog">'+rows+'</div>'):'')+
     (st?('<div class="vchint">'+esc(st)+'</div>'):'');
+  vcFit();
   var lg=p.querySelector('.vclog');
   if(lg)lg.scrollTop=lg.scrollHeight;
 };
